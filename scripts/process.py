@@ -6,6 +6,7 @@ in one AutoModel call. Outputs unified result.json or error.json.
 import argparse
 import json
 import os
+import re
 import sys
 import traceback
 from datetime import datetime
@@ -36,13 +37,23 @@ def load_hotwords(path: Path) -> list[str]:
 
 
 def get_audio_duration(audio_path: Path) -> float:
+    """Get audio duration in seconds.
+
+    Prefers ffprobe (fast, accurate). Falls back to librosa when ffprobe
+    is unavailable (e.g., ffmpeg not on PATH in Git Bash on Windows —
+    librosa is already a FunASR dependency so this adds no new install).
+    """
     import subprocess
-    result = subprocess.run(
-        ["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
-         "-of", "default=noprint_wrappers=1:nokey=1", str(audio_path)],
-        capture_output=True, text=True, check=True
-    )
-    return float(result.stdout.strip())
+    try:
+        result = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
+             "-of", "default=noprint_wrappers=1:nokey=1", str(audio_path)],
+            capture_output=True, text=True, check=True
+        )
+        return float(result.stdout.strip())
+    except (FileNotFoundError, subprocess.CalledProcessError, ValueError):
+        import librosa
+        return float(librosa.get_duration(path=str(audio_path)))
 
 
 def build_model(use_punc: bool = True):
@@ -61,8 +72,26 @@ def build_model(use_punc: bool = True):
     return AutoModel(**kwargs)
 
 
+def _clean_token_spaces(text: str) -> str:
+    """Remove spaces between CJK characters.
+
+    FunASR with punc disabled emits token-level output with a space
+    between every Chinese character (e.g. "我 想 问"). Punc-enabled
+    output has no such spaces. Strip inter-CJK spaces for readability
+    while preserving spaces around latin/digit runs.
+    """
+    if not text:
+        return text
+    return re.sub(r"(?<=[\u4e00-\u9fff])\s+(?=[\u4e00-\u9fff])", "", text)
+
+
 def _parse_res(res: list, duration: float) -> tuple[list, list, str]:
-    """Extract speakers, segments, full_text from FunASR result list."""
+    """Extract speakers, segments, full_text from FunASR result list.
+
+    Handles the field-name inconsistency between punc-enabled and
+    punc-disabled runs: with punc, sentence_info items use `text`;
+    without punc, they use `sentence`. We accept either.
+    """
     speakers = {}
     segments = []
     full_text_parts = []
@@ -74,18 +103,21 @@ def _parse_res(res: list, duration: float) -> tuple[list, list, str]:
                 spk_id = f"spk_{sent.get('spk', 'unknown')}"
                 start = sent.get("start", 0) / 1000.0
                 end = sent.get("end", 0) / 1000.0
+                # punc-on: sent['text']; punc-off: sent['sentence']
+                raw = sent.get("text") or sent.get("sentence", "")
+                text = _clean_token_spaces(raw)
                 segments.append({
                     "start": start,
                     "end": end,
                     "speaker_id": spk_id,
-                    "text": sent.get("text", ""),
+                    "text": text,
                 })
-                full_text_parts.append(sent.get("text", ""))
+                full_text_parts.append(text)
                 speakers[spk_id] = speakers.get(spk_id, 0) + max(0, end - start)
         else:
             # No sentence_info (older pipeline or no VAD) — fall back to
             # top-level text as a single segment with unknown speaker.
-            text = item.get("text", "")
+            text = _clean_token_spaces(item.get("text", ""))
             segments.append({
                 "start": 0.0,
                 "end": duration,
