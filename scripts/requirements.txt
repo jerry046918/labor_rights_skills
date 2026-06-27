@@ -1,0 +1,7 @@
+funasr==1.0.27
+torch>=2.0.0,<2.3.0
+torchaudio>=2.0.0,<2.3.0
+modelscope>=1.10.0
+edge-tts>=6.1.0
+pyyaml>=6.0
+pytest>=7.0.0
