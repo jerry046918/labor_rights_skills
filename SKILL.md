@@ -52,11 +52,11 @@ description: Use when a user describes a labor dispute with their employer (e.g.
    - `no_written_contract` 未签劳动合同（二倍工资差额）
    - `overtime_pay` 加班费争议
    - `work_injury` 工伤认定与待遇
-   - `position_salary_change` 调岗降薪 / 变更劳动合同
+   - `position_change` 调岗降薪 / 变更劳动合同
    - `non_compete` 竞业限制争议
    - `service_period` 服务期与违约金（培训服务期）
    - `economic_compensation` 经济补偿金 / 赔偿金计算
-   - `social_security` 社保与公积金争议
+   - `social_insurance` 社保与公积金争议
 2. **加载 `references/dispute-patterns.md`**
 3. 按识别出的 token，从该类型的"必问项"中生成针对性问题
 4. 用户回答任意几项即可，缺失项标【需补充】
