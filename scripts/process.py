@@ -13,6 +13,13 @@ from pathlib import Path
 
 from funasr import AutoModel
 
+try:
+    # When imported as part of `scripts` package (e.g., from tests)
+    from scripts.diarization_utils import detect_diarization_degradation
+except ImportError:
+    # When run as a script (python scripts/process.py)
+    from diarization_utils import detect_diarization_degradation
+
 SKILL_ROOT = Path(__file__).resolve().parent.parent
 MODELS_DIR = SKILL_ROOT / "models"
 VAD_MODEL = "iic/speech_fsmn_vad_zh-cn-16k-common-pytorch"
@@ -38,36 +45,24 @@ def get_audio_duration(audio_path: Path) -> float:
     return float(result.stdout.strip())
 
 
-def build_model():
+def build_model(use_punc: bool = True):
     # VAD is required to segment audio — without it, CAM++ diarization
     # gets a single embedding for the whole file and can't split speakers.
-    return AutoModel(
-        model=ASR_MODEL,
-        vad_model=VAD_MODEL,
-        spk_model=SPK_MODEL,
-        punc_model=PUNC_MODEL,
-        disable_update=True,
-    )
+    # Punc can be disabled as a fallback when it causes length-mismatch
+    # warnings that break sentence_info assembly.
+    kwargs = {
+        "model": ASR_MODEL,
+        "vad_model": VAD_MODEL,
+        "spk_model": SPK_MODEL,
+        "disable_update": True,
+    }
+    if use_punc:
+        kwargs["punc_model"] = PUNC_MODEL
+    return AutoModel(**kwargs)
 
 
-def process_audio(audio_path: Path, hotwords: list[str]) -> dict:
-    model = build_model()
-    duration = get_audio_duration(audio_path)
-    hotword_str = " ".join(hotwords) if hotwords else None
-
-    kwargs = dict(
-        input=str(audio_path),
-        batch_size_s=60,
-    )
-    if hotword_str:
-        kwargs["hotword"] = hotword_str
-
-    res = model.generate(**kwargs)
-
-    # FunASR returns a list with one item per input file. The item has
-    # `text` (full transcript), `timestamp` (word-level), and crucially
-    # `sentence_info` — sentence-level segments with `start`/`end`/`spk`.
-    # The `spk` field is an int from CAM++ diarization.
+def _parse_res(res: list, duration: float) -> tuple[list, list, str]:
+    """Extract speakers, segments, full_text from FunASR result list."""
     speakers = {}
     segments = []
     full_text_parts = []
@@ -104,20 +99,67 @@ def process_audio(audio_path: Path, hotwords: list[str]) -> dict:
         {"id": sid, "total_speaking_seconds": round(sec, 1)}
         for sid, sec in speakers.items()
     ]
+    return speakers_list, segments, "".join(full_text_parts)
 
-    return {
+
+def process_audio(audio_path: Path, hotwords: list[str]) -> dict:
+    duration = get_audio_duration(audio_path)
+    hotword_str = " ".join(hotwords) if hotwords else None
+
+    kwargs = dict(input=str(audio_path), batch_size_s=60)
+    if hotword_str:
+        kwargs["hotword"] = hotword_str
+
+    # First attempt: full model (with punc)
+    model = build_model(use_punc=True)
+    res = model.generate(**kwargs)
+
+    punc_used = True
+    diarization_status = "ok"
+    warning = None
+
+    if detect_diarization_degradation(res, duration):
+        # Auto-fallback: rerun without punc. Punc is the usual culprit
+        # for length-mismatch warnings that break sentence_info.
+        model_no_punc = build_model(use_punc=False)
+        res = model_no_punc.generate(**kwargs)
+        punc_used = False
+
+        if detect_diarization_degradation(res, duration):
+            diarization_status = "failed"
+            warning = (
+                "Diarization failed: ASR text is complete but speaker "
+                "segmentation is unusable. Punc-disabled fallback was "
+                "attempted but did not resolve. Recommend manual speaker "
+                "annotation or switching to an alternative evidence path."
+            )
+        else:
+            diarization_status = "degraded"
+            warning = (
+                "Diarization recovered via punc-disabled fallback. Text "
+                "has no punctuation but speaker segmentation is usable."
+            )
+
+    speakers_list, segments, full_text = _parse_res(res, duration)
+
+    result = {
         "audio_path": str(audio_path),
         "duration_seconds": round(duration, 1),
         "asr_model": "seaco-paraformer",
         "spk_model": "cam++",
-        "punctuation_model": "ct-punc",
+        "punctuation_model": "ct-punc" if punc_used else "none",
         "processed_at": datetime.now().isoformat(timespec="seconds"),
         "hotwords_used": len(hotwords),
         "hotwords_applied": hotwords,
         "speakers": speakers_list,
         "segments": segments,
-        "full_text": "".join(full_text_parts),
+        "full_text": full_text,
+        "asr_text_chars": len(full_text),
+        "diarization_status": diarization_status,
     }
+    if warning:
+        result["warning"] = warning
+    return result
 
 
 def write_error(audio_path: Path, output_dir: Path, exc: Exception) -> None:

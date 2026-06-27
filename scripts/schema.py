@@ -3,7 +3,9 @@ REQUIRED_RESULT_FIELDS = [
     "audio_path", "duration_seconds", "asr_model", "spk_model",
     "punctuation_model", "processed_at", "hotwords_used",
     "hotwords_applied", "speakers", "segments", "full_text",
+    "asr_text_chars", "diarization_status",
 ]
+VALID_DIARIZATION_STATUS = {"ok", "degraded", "failed"}
 REQUIRED_SEGMENT_FIELDS = ["start", "end", "speaker_id", "text"]
 REQUIRED_SPEAKER_FIELDS = ["id", "total_speaking_seconds"]
 REQUIRED_ERROR_FIELDS = [
@@ -17,6 +19,13 @@ def validate_result_json(data: dict) -> None:
     for field in REQUIRED_RESULT_FIELDS:
         if field not in data:
             raise ValueError(f"Missing required field: {field}")
+
+    status = data["diarization_status"]
+    if status not in VALID_DIARIZATION_STATUS:
+        raise ValueError(
+            f"diarization_status must be one of "
+            f"{sorted(VALID_DIARIZATION_STATUS)}, got: {status!r}"
+        )
 
     for s in data["speakers"]:
         for f in REQUIRED_SPEAKER_FIELDS:

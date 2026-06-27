@@ -19,6 +19,8 @@ def _valid_result():
         "speakers": [{"id": "spk_0", "total_speaking_seconds": 50}],
         "segments": [{"start": 0.0, "end": 1.0, "speaker_id": "spk_0", "text": "test"}],
         "full_text": "test",
+        "asr_text_chars": 4,
+        "diarization_status": "ok",
     }
 
 
@@ -53,6 +55,34 @@ def test_result_speakers_count_mismatch_fails():
     bad = _valid_result()
     bad["segments"][0]["speaker_id"] = "spk_nonexistent"
     with pytest.raises(ValueError, match="spk_nonexistent"):
+        validate_result_json(bad)
+
+
+def test_result_missing_asr_text_chars_fails():
+    bad = _valid_result()
+    del bad["asr_text_chars"]
+    with pytest.raises(ValueError, match="asr_text_chars"):
+        validate_result_json(bad)
+
+
+def test_result_missing_diarization_status_fails():
+    bad = _valid_result()
+    del bad["diarization_status"]
+    with pytest.raises(ValueError, match="diarization_status"):
+        validate_result_json(bad)
+
+
+@pytest.mark.parametrize("status", ["ok", "degraded", "failed"])
+def test_result_diarization_status_valid(status):
+    ok_result = _valid_result()
+    ok_result["diarization_status"] = status
+    validate_result_json(ok_result)
+
+
+def test_result_diarization_status_invalid():
+    bad = _valid_result()
+    bad["diarization_status"] = "broken"
+    with pytest.raises(ValueError, match="diarization_status"):
         validate_result_json(bad)
 
 
