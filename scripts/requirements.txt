@@ -1,7 +1,50 @@
+# Labor Rights Advisor Skill - Python dependencies for audio evidence processing
+#
+# Install via:
+#   pip install -r scripts/requirements.txt
+# Or use scripts/setup.sh --install (handles China mirrors + funasr --no-deps quirk)
+#
+# Why funasr is listed but installed via setup.sh with --no-deps:
+#   funasr's dependency tree includes `editdistance`, which has no
+#   wheel for Python 3.13 and requires MSVC to build from source on
+#   Windows. editdistance is only used by funasr for CER/WER eval (not
+#   inference), so we install funasr with --no-deps and manually pull
+#   everything else. See CONTRIBUTING.md "已知安装问题" for details.
+
+# === Core inference stack ===
 funasr>=1.3.0
 torch>=2.0.0
 torchaudio>=2.0.0
+
+# === Audio I/O ===
+# librosa is used by process.py as ffprobe fallback (Git Bash PATH may
+# not include ffmpeg); also a funasr transitive dep.
+librosa>=0.10.0
+soundfile>=0.12.1
+scipy>=1.4.1
+numpy>=1.20.0
+
+# === FunASR transitive deps (must list explicitly due to --no-deps) ===
 modelscope>=1.10.0
+huggingface_hub>=0.16.0
+safetensors>=0.3.0
+transformers>=4.30.0
+tiktoken>=0.4.0
+sentencepiece>=0.1.99
+omegaconf>=2.0
+hydra-core>=1.3.2
+kaldiio>=2.17.0
+jieba>=0.42.1
+jamo>=0.4.1
+jaconv>=0.3
+umap_learn
+torch_complex
+tensorboardX>=2.6
+oss2>=2.18.0
+PyYAML>=5.1.2
+tqdm>=4.65.0
+requests>=2.30.0
+
+# === Test fixtures ===
 edge-tts>=6.1.0
-pyyaml>=6.0
 pytest>=7.0.0
