@@ -95,8 +95,21 @@ create_venv() {
 install_deps() {
   echo "Installing PyTorch (CPU) from China mirror..."
   pip install --index-url "$TORCH_INDEX" torch torchaudio
-  echo "Installing FunASR and deps from Tsinghua mirror..."
-  pip install --index-url "$PIP_INDEX" -r "$SCRIPT_DIR/requirements.txt"
+
+  echo "Installing FunASR deps (skip editdistance — only needed for CER/WER eval, not inference)..."
+  pip install --index-url "$PIP_INDEX" \
+    "scipy>=1.4.1" librosa "soundfile>=0.12.1" numpy "PyYAML>=5.1.2" \
+    tqdm requests "omegaconf>=2.0" "hydra-core>=1.3.2" modelscope \
+    huggingface_hub safetensors transformers tiktoken sentencepiece \
+    "kaldiio>=2.17.0" jieba jamo jaconv umap_learn torch_complex tensorboardX oss2 \
+    "edge-tts>=6.1.0" "pytest>=7.0.0"
+
+  echo "Installing FunASR itself with --no-deps..."
+  pip install --no-deps --index-url "$PIP_INDEX" "funasr>=1.3.0"
+
+  echo "Verifying FunASR import..."
+  python -c "from funasr import AutoModel; print('FunASR import OK')" \
+    || { echo "ERROR: FunASR import failed"; return 1; }
 }
 
 download_models() {
