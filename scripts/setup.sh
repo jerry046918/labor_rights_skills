@@ -18,8 +18,9 @@ PIP_INDEX="https://pypi.tuna.tsinghua.edu.cn/simple"
 TORCH_INDEX="https://download.pytorch.org/whl/cpu"
 MODELSCOPE_ENDPOINT="https://www.modelscope.cn"
 
-# Required models
+# Required models — must match process.py (VAD/ASR/SPK/PUNC)
 declare -a MODELS=(
+  "iic/speech_fsmn_vad_zh-cn-16k-common-pytorch"
   "iic/speech_seaco_paraformer_large_asr_nat-zh-cn-16k-common-vocab8404-pytorch"
   "iic/speech_campplus_sv_zh-cn_16k-common"
   "iic/punc_ct-transformer_zh-cn-common-vad_realtime-vocab272727"
@@ -37,12 +38,15 @@ check_python() {
 }
 
 check_ffprobe() {
+  # ffprobe is OPTIONAL: process.py has a librosa fallback that handles
+  # duration detection when ffprobe is not on PATH (common in Git Bash
+  # on Windows). Install via --with-ffmpeg only if you want faster probing.
   if command -v ffprobe &> /dev/null; then
-    echo "ffprobe: OK"
+    echo "ffprobe: OK (optional)"
     return 0
   fi
-  echo "ffprobe: MISSING (use --with-ffmpeg to install)"
-  return 1
+  echo "ffprobe: not on PATH (OK — process.py falls back to librosa)"
+  return 0
 }
 
 check_venv() {
@@ -66,7 +70,7 @@ check_models() {
 do_check() {
   echo "=== Environment Check ==="
   check_python || return 1
-  check_ffprobe || echo "  (warning: ffprobe missing, see --with-ffmpeg)"
+  check_ffprobe
   if check_venv; then
     echo "venv: OK"
   else
@@ -74,9 +78,9 @@ do_check() {
     return 1
   fi
   if check_models; then
-    echo "models: OK"
+    echo "models: OK ($(echo "${MODELS[@]}" | wc -w) models)"
   else
-    echo "models: MISSING"
+    echo "models: MISSING (expected ${#MODELS[@]} models)"
     return 1
   fi
   echo "=== Ready ==="
@@ -126,7 +130,9 @@ download_models() {
 import os
 from modelscope.hub.snapshot_download import snapshot_download
 cache_dir = os.environ['MODELS_DIR_WIN']
+# Must match MODELS array at top of this file and process.py constants
 models = [
+  'iic/speech_fsmn_vad_zh-cn-16k-common-pytorch',
   'iic/speech_seaco_paraformer_large_asr_nat-zh-cn-16k-common-vocab8404-pytorch',
   'iic/speech_campplus_sv_zh-cn_16k-common',
   'iic/punc_ct-transformer_zh-cn-common-vad_realtime-vocab272727',
