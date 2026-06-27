@@ -83,10 +83,10 @@ description: Use when a user describes a labor dispute with their employer (e.g.
 
 3. **逐条解析**：
    - **文本**：直接进入上下文，抽取关键事实，原文同时存 `sources/ev_XXX.txt`
-   - **图片**：用 Read 工具多模态视觉理解（识别文字、公章、截图来源）
-   - **PDF**：用 Read 工具读取（已支持 PDF，含公章识别）
-   - **录音**：见下方"3.x 录音证据的专门处理"子节
-   - 每条证据写一张卡片到 `cards/ev_XXX.json`，schema 见 evidence-collection.md 第二节
+   - **图片**：用 Read 工具多模态视觉理解（识别文字、公章、截图来源）。**若 Read 失败/返回空（纯文本模型）→ 走 evidence-collection.md 第八节"模型能力降级"流程**
+   - **PDF**：用 Read 工具读取（文本型 PDF 直接提取；扫描件 PDF 若返回乱码 → 同样走降级流程）
+   - **录音**：见下方"3.x 录音证据的专门处理"子节。**录音不受对话模型能力影响**（FunASR 完全本地）
+   - 每条证据写一张卡片到 `cards/ev_XXX.json`，schema 见 evidence-collection.md 第二节；降级证据额外填 `degradation_note` 字段
 
 4. **交叉校验**：所有证据解析完成后，对照同类型事实进行交叉校验（同一事实被多条证据支撑 ✓，矛盾点提示用户核实）。
 
