@@ -44,17 +44,20 @@ async def generate(script: dict[str, Any], output_dir: Path) -> Path:
         await synth_segment(seg["text"], voices[seg["speaker"]], seg_file)
         segment_files.append(seg_file)
 
-    # Concatenate using ffmpeg
+    # Concatenate using ffmpeg. Write absolute paths in concat.txt so
+    # we don't have to mess with cwd (which causes path resolution bugs
+    # on Windows when ffmpeg is invoked via subprocess).
     list_file = segments_dir / "concat.txt"
     with list_file.open("w", encoding="utf-8") as f:
         for sf in segment_files:
-            f.write(f"file '{sf.name}'\n")
+            # ffmpeg concat demuxer with -safe 0 allows absolute paths
+            f.write(f"file '{sf.resolve().as_posix()}'\n")
 
     import subprocess
     subprocess.run(
         ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(list_file),
          "-c", "copy", str(output_path)],
-        cwd=str(segments_dir), check=True, capture_output=True
+        check=True, capture_output=True
     )
     return output_path
 

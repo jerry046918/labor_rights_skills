@@ -1,0 +1,18 @@
+output: dismissal_2speakers.mp3
+speakers:
+  - id: hr
+    voice: zh-CN-XiaoxiaoNeural
+  - id: employee
+    voice: zh-CN-YunxiNeural
+segments:
+  - speaker: hr
+    text: "今天找你来,主要是公司决定从今天起解除与你的劳动合同。"
+    pause_after: 0.5
+  - speaker: employee
+    text: "为什么?我不同意。"
+    pause_after: 0.5
+  - speaker: hr
+    text: "公司会按 N+1 给你经济补偿,共三个月工资。"
+    pause_after: 0.5
+  - speaker: employee
+    text: "我主张是四个半月,而且应该是违法解除的赔偿金。"

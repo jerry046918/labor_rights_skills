@@ -19,3 +19,8 @@ evidence/
 # FunASR downloaded models (~3GB) and venv (created by setup.sh)
 models/
 .venv-funasr/
+
+# Generated test fixtures (large binaries)
+tests/fixtures/*.mp3
+tests/fixtures/*.wav
+tests/fixtures/_segments/

@@ -1,0 +1,17 @@
+output: cross_role_conflict.mp3
+speakers:
+  - id: supervisor
+    voice: zh-CN-YunyangNeural
+  - id: hr
+    voice: zh-CN-XiaoxiaoNeural
+  - id: employee
+    voice: zh-CN-YunxiNeural
+segments:
+  - speaker: supervisor
+    text: "我从来没说过要辞退你,你别误会。"
+    pause_after: 0.5
+  - speaker: hr
+    text: "不过公司确实已经决定解除合同了,这是公司的最终决定。"
+    pause_after: 0.5
+  - speaker: employee
+    text: "那到底是辞还是不辞?"
