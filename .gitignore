@@ -24,3 +24,7 @@ models/
 tests/fixtures/*.mp3
 tests/fixtures/*.wav
 tests/fixtures/_segments/
+
+# Python bytecode cache
+__pycache__/
+*.pyc
