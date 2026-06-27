@@ -104,7 +104,10 @@ description: Use when a user describes a labor dispute with their employer (e.g.
 
 **3.1 法条检索：**
 - 加载 `references/dispute-patterns.md` 中该类型的"法条映射"
-- 按映射读取 `references/labor-law-full.md` 或 `references/labor-contract-law-full.md` 中的对应条文
+- 按映射读取下列内置法条原文中的对应条文：
+  - `references/labor-law-full.md`（《劳动法》，2018 修正，107 条）
+  - `references/labor-contract-law-full.md`（《劳动合同法》，2012 修正，98 条）
+  - `references/labor-dispute-arbitration-law-full.md`（《劳动争议调解仲裁法》，2008 年施行，54 条——管辖、时效、先行裁决、终局裁决等程序性问题）
 - **必须使用法条原文，不得改写或凭记忆**
 
 **3.2 案例检索（双轨）：**

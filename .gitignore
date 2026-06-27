@@ -26,6 +26,12 @@ models/
 tests/fixtures/*.mp3
 tests/fixtures/*.wav
 tests/fixtures/_segments/
+tests/fixtures/audio/
+tests/fixtures/**/*.mp4
+tests/fixtures/**/*.m4a
+
+# Reverse-engineered test cases from real audio (derived content, not for public repo)
+tests/fixtures/cases/
 
 # Python bytecode cache
 __pycache__/

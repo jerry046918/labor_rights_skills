@@ -17,7 +17,7 @@
 **注意事项：**
 1. 同一案件常涉及多个争议类型（例如"违法解除"+"拖欠工资"+"加班费"+"经济补偿"），SKILL.md 应并行激活。
 2. 必问项中的日期、金额、人数等量化信息必须追问到具体数值，不接受"大概"、"很多"等模糊表述。
-3. 法条引用以 `references/labor-contract-law-full.md`（劳动合同法，98 条）和 `references/labor-law-full.md`（劳动法，107 条）为基准；其他法规仅作指引。
+3. 法条引用以 `references/labor-contract-law-full.md`（劳动合同法，98 条）、`references/labor-law-full.md`（劳动法，107 条）和 `references/labor-dispute-arbitration-law-full.md`（劳动争议调解仲裁法，54 条）为基准；其他法规仅作指引。
 
 ## 争议类型清单
 1. 违法解除 / 违法辞退
@@ -560,6 +560,7 @@
 **数据来源：**
 - 主法：《中华人民共和国劳动法》（2018 修正，107 条）— 见 `references/labor-law-full.md`
 - 主法：《中华人民共和国劳动合同法》（2012 修正，98 条）— 见 `references/labor-contract-law-full.md`
+- 主法：《中华人民共和国劳动争议调解仲裁法》（2008 年施行，54 条）— 见 `references/labor-dispute-arbitration-law-full.md`（管辖 §21、时效 §27、举证倒置 §6/§39、先予执行 §44、终局裁决 §47）
 - 配套法规（工伤保险条例、社会保险法、住房公积金管理条例、最高法司法解释、劳动合同法实施条例等）均需 SKILL.md 在生成最终意见时通过 WebSearch 二次校验现行版本号与具体条款编号
 
 **数据整理日期：** 2026 年 6 月 27 日
