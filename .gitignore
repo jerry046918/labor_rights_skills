@@ -9,3 +9,6 @@ Thumbs.db
 
 # Claude Code local
 .claude/settings.local.json
+
+# Internal planning/spec docs (not for public release)
+docs/superpowers/

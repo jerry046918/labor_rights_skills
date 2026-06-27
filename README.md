@@ -145,9 +145,6 @@ labor_rights_skills/
 ├── README.md                             # 本文件
 ├── LICENSE                               # Anti-996 License v1.0
 ├── CONTRIBUTING.md                       # 贡献指南
-├── docs/superpowers/
-│   ├── specs/                            # 设计文档
-│   └── plans/                            # 实施计划
 └── references/
     ├── labor-law-full.md                 # 《劳动法》全文（2018 修正，107 条）
     ├── labor-contract-law-full.md        # 《劳动合同法》全文（2012 修正，98 条）
@@ -196,7 +193,7 @@ labor_rights_skills/
 
 ### 其他场景
 
-详见 [`docs/superpowers/plans/`](docs/superpowers/plans/) 中的 6 个端到端测试场景（违法解除、拖欠工资、未签合同、加班费、工伤、调岗降薪）。
+skill 已通过 6 个端到端测试场景验证：违法解除、拖欠工资、未签合同、加班费、工伤、调岗降薪。
 
 ---
 
