@@ -141,3 +141,174 @@ description: Use when a user describes a labor dispute with their employer (e.g.
 3. **不杜撰联系方式**：电话/网址/地址若非内置已知，必须 WebSearch 验证，标注"以官方最新公布为准"
 4. **明确边界**：意见书末尾固定声明不构成正式法律意见
 5. **高风险动作强制提示**：标 ⚠️ 的操作必须先建议咨询律师
+
+## 录音证据处理
+
+当用户在阶段 1 或阶段 2 提供音频证据路径（如"我有录音证据：D:/xxx.mp3"），启动以下流程。
+
+### 处理流水线
+
+#### Step 1：环境检测
+
+调 `scripts/setup.sh --check`。若未就绪，告知用户："需安装 FunASR（约 3GB，10-20 分钟，走国内镜像）"，征得同意后跑 `bash scripts/setup.sh --install`，并安装 ffmpeg（Windows: `winget install Gyan.FFmpeg`）。
+
+#### Step 2：隐私告知 + 时长估算
+
+**首次处理必须完整展示以下说明，征得用户明确同意：**
+
+```
+🔒 录音证据处理 - 隐私说明
+
+✅ 完全本地处理：
+- 录音文件不上传到任何服务器
+- 语音转文字使用本机运行的 FunASR 模型，音频内容不离开您的电脑
+
+⚠️ 会发送给您当前使用的大模型服务商：
+- 转写后的文字内容会被提交给当前对话所用的 AI 模型
+- 用于：角色推断、证据抽取、意见书生成
+- 数据处理遵循您所使用平台的服务条款与隐私政策
+
+🤔 请在提供录音前判断：
+转写后的文字中是否可能包含您不愿让模型服务商知晓的信息？
+- 身份证号、银行账号、家庭住址
+- 商业机密、未公开的公司内部信息
+- 第三方隐私（他人身份证/电话等）
+- 涉及刑事犯罪的敏感细节
+
+如有顾虑，建议您先自行处理：
+- 剪辑掉录音中的敏感片段再提供
+- 仅提供录音的文字摘要（您手动转写并脱敏）
+- 用文字描述录音关键内容，代替提供录音本身
+- 选择不提供录音证据，改走其他证据路径
+
+一旦您提供录音路径，本 skill 将开始处理，转写文字会进入模型上下文。
+```
+
+用 `ffprobe` 取音频时长，告知用户预期处理时间：
+- CPU：30 分钟音频约 12-18 分钟
+- GPU：30 分钟音频约 2-4 分钟
+
+#### Step 3：热词准备
+
+读 `references/audio-keywords.md` 静态基线；从案件上下文（公司名、岗位、争议类型）抽专属热词；用 `scripts/hotword_utils.py` 合并写入 `evidence/<audio-name>_<date>/hotwords.json`。
+
+#### Step 4：启动脱离会话的后台进程
+
+创建证据文件夹，启动真正脱离 agent 会话的进程。
+
+**Linux / macOS / Git Bash**：
+```bash
+setsid python scripts/process.py \
+    --audio <path> \
+    --hotwords evidence/<name>_<date>/hotwords.json \
+    --output evidence/<name>_<date>/result.json \
+    > evidence/<name>_<date>/processing.log 2>&1 < /dev/null &
+disown
+```
+
+**Windows PowerShell**（必须用 `cmd /c start /B` 触发 DETACHED_PROCESS，不能用 Start-Process）：
+```powershell
+cmd /c start /B python scripts/process.py `
+    --audio <path> `
+    --hotwords evidence/<name>_<date>/hotwords.json `
+    --output evidence/<name>_<date>/result.json `
+    > evidence/<name>_<date>/processing.log 2>&1
+```
+
+#### Step 5：告知用户等待 + 检查信号
+
+```
+已启动后台处理，预计 12-18 分钟。
+
+请留意 evidence/<name>_<date>/ 文件夹：
+- processing.log   ← 进度日志，可随时查看
+- result.json     ← 全部完成（看到此文件就告诉我"好了"）
+- error.json      ← 仅失败时出现
+
+完成后请回复我，我继续角色推断和证据抽取。
+在此期间我推进其他事实调查/法律检索。
+```
+
+agent 在同会话内继续推进阶段 1-3 其他任务。用户也可关掉 agent，稍后只要 result.json 存在，直接说"录音处理好了，继续"即可恢复。
+
+#### Step 6：用户信号触发 → 角色推断
+
+收到用户"好了"/"done"/"result.json 出现了"等信号后：
+- 若 `error.json` 存在 → 跳到错误处理
+- 读 `result.json` + `references/speaker-roles.md`
+- 对每个 speaker_id，分析其发言，从 taxonomy 选最匹配角色 + 置信度 + 理由
+
+#### Step 7：用户确认角色映射
+
+展示推断结果给用户。用户确认后写入 `evidence/<name>_<date>/role_mapping.json`：
+
+```json
+{
+  "propagated_to_cards": false,
+  "mappings": [
+    {"speaker_id": "spk_0", "role": "HR/人力资源", "confidence": "high", "reason": "..."},
+    {"speaker_id": "spk_1", "role": "员工本人", "confidence": "high", "reason": "..."}
+  ]
+}
+```
+
+`propagated_to_cards: false` 表示已确认但尚未写入卡片；Step 8 完成后翻为 `true`——这样若中途中断，agent 可识别"角色已确认但卡片未生成"状态并恢复。
+
+用户放弃 → 以原始 spk_id 进入下一步，卡片 `speaker_role="未识别角色"`（写入卡片但 reliability_level 降级提示）。
+
+#### Step 8：证据卡片抽取
+
+按争议类型扫描关键词（参见 `references/dispute-patterns.md` 对应 token 的"识别关键词"）。数字交叉校验，冲突标注。卡片写入 `evidence/<name>_<date>/cards/ev_XXX.json`，字段：
+
+```json
+{
+  "card_id": "ev_001",
+  "timestamp": "00:03:12-00:03:25",
+  "speaker_id": "spk_0",
+  "speaker_role": "HR/人力资源",
+  "quote": "公司决定从今天起解除与你的劳动合同",
+  "evidence_type": "解除意思表示",
+  "dispute_relevance": "illegal_dismissal",
+  "confidence": "high",
+  "cross_role_conflict": false,
+  "verification_notes": "无交叉验证冲突",
+  "reliability_level": "★☆☆"
+}
+```
+
+跨角色冲突检测可调用 `scripts/conflict_detection.py` 的 `detect_cross_role_conflicts()`（纯确定性逻辑：同 evidence_type 下出现 ≥2 个不同公司方角色即触发冲突标记）。
+
+写完卡片后更新 `role_mapping.json` 的 `propagated_to_cards: true`。
+
+#### Step 9：接入意见书
+
+加载 `references/opinion-template.md`，第四节"事实与证据"按以下格式引用：
+
+```
+【★☆☆ 录音证据】2024-XX-XX 谈判录音 00:03:12-00:03:25
+   （HR/人力资源 发言）："公司决定从今天起解除与你的劳动合同"
+   ⚠️ 该内容由 AI 语音转写获得，可能存在误识，建议核对原始录音
+```
+
+**录音证据统一标 ★☆☆**（参考资料级），原因：
+1. ASR 转写存在误识可能
+2. 角色推断是 LLM 主观判断，非法律认定
+3. 录音完整性未经验证（可能被剪辑）
+
+意见书末尾追加免责："本意见书引用的录音证据由 AI 自动转写与推断，不构成原始证据，请在仲裁/诉讼中提交原始录音载体。"
+
+### 错误处理
+
+参见设计文档 §8。核心原则：不静默失败、不阻塞主流程、降级路径三选一（重试 / 降级模型 / 跳过）。
+
+agent 遇到以下情况时的处置规则：
+
+| 触发条件 | 处置 |
+|---------|------|
+| 音频 > 2 小时 | 告知用户"超长音频处理耗时，建议剪辑关键片段"，征得同意后继续 |
+| 0 张证据卡片抽出 | 不报错，在意见书第四节注明"未在录音中识别到强相关证据片段"，让用户决定是否补充 |
+| ASR 转写质量过低（全篇都是乱码/单字） | 告知用户"转写质量过低，建议改用其他证据路径"；不接入意见书 |
+| 录音中含第三方隐私（他人身份证/电话等） | 提示用户"转写文字将进入模型上下文，如涉及他人隐私请自行剪辑后再提供" |
+| 模型文件损坏（校验失败） | 提示用户跑 `bash scripts/setup.sh --redownload-models` |
+| 单一说话人（全员同一 spk_id） | 跳过角色推断，直接抽取证据，卡片 speaker_role 全填"未识别角色" |
+| 磁盘空间不足 | 告知具体缺口，让用户清理后重试 |
