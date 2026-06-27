@@ -7,8 +7,10 @@
 .DS_Store
 Thumbs.db
 
-# Claude Code local
+# AI assistant local config
 .claude/settings.local.json
+.cursor/
+.cline/
 
 # Internal planning/spec docs (not for public release)
 docs/superpowers/

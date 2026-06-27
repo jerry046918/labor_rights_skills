@@ -1,6 +1,6 @@
 # Labor Rights Advisor Skill
 
-> 一个帮助中国大陆员工应对劳动争议的 Claude Code Skill——通过结构化调查、法条检索与判例匹配，自动生成可执行的《法律意见书》。
+> 一个帮助中国大陆员工应对劳动争议的 AI 助手 Skill——通过结构化调查、法条检索与判例匹配，自动生成可执行的《法律意见书》。
 
 [![License: Anti-996 v1.0](https://img.shields.io/badge/License-Anti--996%20v1.0-red.svg)](./LICENSE)
 [![PRC Labor Law](https://img.shields.io/badge/PRC-Labor%20Law%202018-success.svg)](./references/labor-law-full.md)
@@ -35,7 +35,7 @@
 - **怕走错棋** —— 担心"主动辞职后还能不能要补偿""签了字还能反悔吗"
 - **请不起律师** —— 几千元的咨询费让人犹豫是否值得维权
 
-而错过本应属于自己的合法权益。这个 skill 把劳动维权所需的核心知识、判例、流程模板打包到一个 Claude Code Skill 里，让普通员工**在遇到争议的第一时间**就能拿到一份专业级的法律分析。
+而错过本应属于自己的合法权益。这个 skill 把劳动维权所需的核心知识、判例、流程模板打包到一个可被 AI 助手加载的 Skill 里，让普通员工**在遇到争议的第一时间**就能拿到一份专业级的法律分析。
 
 ---
 
@@ -73,19 +73,19 @@
 
 ### 安装
 
-将本仓库克隆到 Claude Code 的 skills 加载路径下：
+将本仓库克隆到您所使用的 AI 助手支持的 skills 加载路径下：
 
 ```bash
-# 方式一：克隆到用户级 skills 目录
-git clone https://github.com/jerry046918/labor_rights_skills.git ~/.claude/skills/labor_rights_advisor
+# 方式一：克隆到用户级 skills 目录（具体路径取决于您使用的 AI 助手）
+git clone https://github.com/jerry046918/labor_rights_skills.git ~/skills/labor_rights_advisor
 
-# 方式二：克隆到任意位置后通过 plugin 机制加载
+# 方式二：克隆到任意位置后通过您所用助手的 plugin / skill 加载机制引入
 git clone https://github.com/jerry046918/labor_rights_skills.git
 ```
 
 ### 激活
 
-在 Claude Code 中直接描述您的情况即可自动激活：
+在 AI 助手中直接描述您的情况即可自动激活：
 
 > 我在上海某互联网公司工作了 3 年，月薪 2 万。上周被以"业绩不达标"为由口头辞退，没提前通知也没给补偿，怎么办？
 
