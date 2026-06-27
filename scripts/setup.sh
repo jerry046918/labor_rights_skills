@@ -55,7 +55,8 @@ check_venv() {
 check_models() {
   for model in "${MODELS[@]}"; do
     local name="${model##*/}"
-    if [[ ! -d "$MODELS_DIR/$name" ]]; then
+    # modelscope nests under the org id (e.g., iic/), check both layouts
+    if [[ ! -d "$MODELS_DIR/$name" && ! -d "$MODELS_DIR/iic/$name" ]]; then
       return 1
     fi
   done
@@ -114,8 +115,17 @@ install_deps() {
 
 download_models() {
   echo "Downloading models from ModelScope..."
-  python -c "
+  # Convert Git Bash path to Windows path so Python on Windows understands it
+  local win_models_dir
+  if command -v cygpath &> /dev/null; then
+    win_models_dir=$(cygpath -w "$MODELS_DIR")
+  else
+    win_models_dir="$MODELS_DIR"
+  fi
+  MODELS_DIR_WIN="$win_models_dir" python -c "
+import os
 from modelscope.hub.snapshot_download import snapshot_download
+cache_dir = os.environ['MODELS_DIR_WIN']
 models = [
   'iic/speech_seaco_paraformer_large_asr_nat-zh-cn-16k-common-vocab8404-pytorch',
   'iic/speech_campplus_sv_zh-cn_16k-common',
@@ -123,7 +133,7 @@ models = [
 ]
 for m in models:
   print(f'Downloading {m}...')
-  snapshot_download(m, cache_dir='$MODELS_DIR')
+  snapshot_download(m, cache_dir=cache_dir)
 print('All models downloaded.')
 "
 }
