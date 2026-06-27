@@ -225,9 +225,21 @@ description: Use when a user describes a labor dispute with their employer (e.g.
 一旦您提供录音路径，本 skill 将开始处理，转写文字会进入模型上下文。
 ```
 
-用 `ffprobe` 取音频时长，告知用户预期处理时间：
-- CPU：30 分钟音频约 12-18 分钟
-- GPU：30 分钟音频约 2-4 分钟
+**视频文件（mp4/avi/mov 等）的额外告知**：
+
+```
+🎬 您提供的是视频文件：
+- 本 skill 只读取音频流转写，视频画面不会被处理或上传
+- 但原始视频本身是敏感资源（可能拍到面部、屏幕、办公环境）
+- 请妥善保管原始视频，仲裁/诉讼时再提交原件
+- ffmpeg 会先抽取音轨到 audio_16k_mono.wav，原视频不会被修改
+```
+
+用 `ffprobe` 取音频时长，告知用户预期处理时间（基于实测 RTF ≈ 0.07）：
+- CPU：3 分钟音频 ~15 秒；30 分钟音频 ~3-5 分钟；2 小时音频 ~15-30 分钟
+- GPU：通常比 CPU 快 3-5 倍
+- 模型加载额外 5-10 秒（首次启动）
+- 公式：`预期耗时 ≈ 音频时长 × 0.07 + 5-10 秒`
 
 #### Step 3：热词准备
 
@@ -235,31 +247,23 @@ description: Use when a user describes a labor dispute with their employer (e.g.
 
 #### Step 4：启动脱离会话的后台进程
 
-创建证据文件夹，启动真正脱离 agent 会话的进程。
+创建证据文件夹，启动真正脱离 agent 会话的进程。**不同 shell 用不同命令**——选错会导致进程随 agent 会话退出被杀，或直接报"拒绝访问"。
 
-**Linux / macOS / Git Bash**：
-```bash
-setsid python scripts/process.py \
-    --audio <path> \
-    --hotwords evidence/<name>_<date>/hotwords.json \
-    --output evidence/<name>_<date>/result.json \
-    > evidence/<name>_<date>/processing.log 2>&1 < /dev/null &
-disown
-```
+| Shell | 命令 | 已验证状态 |
+|-------|------|-----------|
+| **Linux / macOS / WSL** | `setsid python scripts/process.py --audio <path> --hotwords <hw.json> --output <result.json> > <log> 2>&1 < /dev/null &` | 完全脱离会话 ✓ |
+| **Windows PowerShell** | `cmd /c start /B python scripts/process.py --audio <path> --hotwords <hw.json> --output <result.json> > <log> 2>&1` | 触发 `DETACHED_PROCESS` ✓ |
+| **Windows Git Bash** | `nohup python scripts/process.py --audio <path> --hotwords <hw.json> --output <result.json> > <log> 2>&1 & disown` | 实测可跑完，但 `nohup` 在 Git Bash for Windows 下是否真正脱离 agent 会话**未验证**——若 agent 退出后处理中断，改用 PowerShell 启动 |
 
-**Windows PowerShell**（必须用 `cmd /c start /B` 触发 DETACHED_PROCESS，不能用 Start-Process）：
-```powershell
-cmd /c start /B python scripts/process.py `
-    --audio <path> `
-    --hotwords evidence/<name>_<date>/hotwords.json `
-    --output evidence/<name>_<date>/result.json `
-    > evidence/<name>_<date>/processing.log 2>&1
-```
+**关键约束**：
+- PowerShell 下不要用 `Start-Process`——它不会真正脱离 agent 会话
+- Git Bash 下不要直接用 `python ... &`（无 `nohup`/`disown`）——agent 退出即杀进程
+- 启动后立即返回提示给用户，不阻塞 agent 主线工作
 
 #### Step 5：告知用户等待 + 检查信号
 
 ```
-已启动后台处理，预计 12-18 分钟。
+已启动后台处理，预计 <根据音频时长按 RTF 0.07 估算>。
 
 请留意 evidence/<name>_<date>/ 文件夹：
 - processing.log   ← 进度日志，可随时查看
@@ -352,4 +356,5 @@ agent 遇到以下情况时的处置规则：
 | 录音中含第三方隐私（他人身份证/电话等） | 提示用户"转写文字将进入模型上下文，如涉及他人隐私请自行剪辑后再提供" |
 | 模型文件损坏（校验失败） | 提示用户跑 `bash scripts/setup.sh --redownload-models` |
 | 单一说话人（全员同一 spk_id） | 跳过角色推断，直接抽取证据，卡片 speaker_role 全填"未识别角色" |
+| ASR 文本完整但 diarization 失败（`result.json` 标 `diarization_status: failed`） | process.py 已自动重跑禁 punc；仍失败则告知用户"转写文本完整但说话人分离失败，建议：① 手工标注关键片段；② 改用其他证据路径；③ 仍可使用 full_text 作为参考但不可作为角色化证据" |
 | 磁盘空间不足 | 告知具体缺口，让用户清理后重试 |
